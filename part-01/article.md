@@ -35,7 +35,37 @@ Ok, that last one paragraph was too long, so enough wording and let's see it in 
    time.sleep(1)  
 ``` 
 
-Save this to a file `logging-json-file.py` (or you can get it from here
+Save this to a file `logging-01.py` (or you can get it from [here](logging-01.py) and then run:
+
+    $ docker run --name logging-01 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker logs -f logging-01
+    
+which will output:
+
+```bash
+Error
+All Good
+Error
+All Good
+Error
+All Good
+Error
+````
+
+This clearly illustrates how output from `stdout/stderr` gets logged and it's actually available with the `docker logs` command. But wait, isn't this the `json-file` driver? So where is this so called JSON file? Let's inspect our container and see what we can find:
+
+    $ docker inspect logging-01 | grep LogPath
+        "LogPath": "/mnt/sda1/var/lib/docker/containers/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1-json.log",
+        
+your will get a different ouput from the command above but the important thing here is that we get a path to the JSON file where our log messages are stored. So let's take a look at this file:
+
+    tail -2 /mnt/sda1/var/lib/docker/containers/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1-json.log
+    {"log":"Error\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120234597Z"}
+    {"log":"All Good\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120475567Z"}
+    
+which is self-explanatory I think ;). 
+
+
 
 
 
