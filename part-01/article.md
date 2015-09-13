@@ -63,9 +63,28 @@ your will get a different ouput from the command above but the important thing h
     {"log":"Error\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120234597Z"}
     {"log":"All Good\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120475567Z"}
     
-which is self-explanatory I think ;). 
+which is self-explanatory I think ;). The `json-file` takes two more options:
+
+- --log-opt max-size=[0-9+][k|m|g]
+- --log-opt max-file=[0-9+]
+
+about which you can know more [here](https://docs.docker.com/reference/logging/overview/). These options lets you control the rate at which you allow your log files to grow. To illustrate this lets re-run our little application:
+
+	$ docker run --rm --log-opt max-file=2  --log-opt max-size=2k  --name logging-02 -ti  -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+	Error
+	All Good
+	Error
+	All Good
+	....
+
+here we have indicated that we only want to keep 2 log files and the max allowed size for any given log file is 2k. You can verify that this is indeed happing by grabbing the location these files:
+
+	$ docker inspect logging-02 | grep LogPath
+		   "LogPath":"/mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd-json.log",
+	$ cd /mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/
+	$ watch 'ls -lh *json*'
 
 
 
-
-
+Syslog driver
+------------
