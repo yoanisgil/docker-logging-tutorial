@@ -5,11 +5,11 @@ Logging is a central piece to almost every application. It is one of those thing
 
 However, today I want to focus on [Docker](http://www.docker.com) and what options are available when it comes to logging in the context of containerized application. Logging capabilities available in the Docker project are expressed in the form of drivers, which is very handy since you get to choose how and where your log messages should be shipped. As of the moment of writing this article there are five of them:
 
-- json-file: This is the default driver. Everything gets logged to a JSON-structured file
-- syslog: Ship logging information to a syslog server
-- journald: Write log messages to journald (journald is a logging service which comes with [systemd](http://www.freedesktop.org/wiki/Software/systemd/))
-- gelf: Writes log messages to a [GELF](https://www.graylog.org/resources/gelf/)  endpoint like Graylog or Logstash
-- fluentd: Write log messages to [fluentd](http://www.fluentd.org/)
+- `json-file`: This is the default driver. Everything gets logged to a JSON-structured file
+- `syslog`: Ship logging information to a syslog server
+- `journald`: Write log messages to journald (journald is a logging service which comes with [systemd](http://www.freedesktop.org/wiki/Software/systemd/))
+- `gelf`: Writes log messages to a [GELF](https://www.graylog.org/resources/gelf/)  endpoint like Graylog or Logstash
+- `fluentd`: Write log messages to [fluentd](http://www.fluentd.org/)
 
 This article is the first of a few ones centered around logging in Docker. We will take a rather in-depth look to the first two drivers *json-file* and *syslog*. We will see how they work and what their strengths and limitations are, etc.
 
