@@ -11,7 +11,7 @@ Logging is a central piece to almost every application. It is one of those thing
 
 This article is the first of a few ones centered around logging in Docker. We will take a rather in-depth look to the first two drivers *json-file* and *syslog*. We will see how they work and what their strengths and limitations are, etc.
 
-**NOTE**: This article's source code alone with the code used all throughout the tutorial can be found on [Github](https://github.com/yoanisgil/docker-logging-tutorial)
+**NOTE**: This article's source code alone with the code used can be found on [Github](https://github.com/yoanisgil/docker-logging-tutorial)
 
 Docker Logging 101
 ----------------------
