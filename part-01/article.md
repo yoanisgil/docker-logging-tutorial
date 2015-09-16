@@ -1,9 +1,7 @@
 Introduction
 -------------------
 
-Logging is a central piece to almost every application. It is one of those things you want to keep around specially when things go wrong. Much and more have been say and done when it comes to this particular subject.
-
-However, today I want to focus on [Docker](http://www.docker.com) and what options are available when it comes to logging in the context of containerized application. Logging capabilities available in the Docker project are expressed in the form of drivers, which is very handy since you get to choose how and where your log messages should be shipped. As of the moment of writing this article there are five of them:
+Logging is a central piece to almost every application. It is one of those things you want to keep around specially when things go wrong. Much and more have been say and done on this particular subject, however, today I want to focus on [Docker](http://www.docker.com) and the options available when it comes to logging in the context of containerized application. Logging capabilities available in the Docker project are exposed in the form of drivers, which is very handy since one gets to choose how and where log messages should be shipped. As of the moment of writing this article there are five of them:
 
 - `json-file`: This is the default driver. Everything gets logged to a JSON-structured file
 - `syslog`: Ship logging information to a syslog server
@@ -13,17 +11,19 @@ However, today I want to focus on [Docker](http://www.docker.com) and what optio
 
 This article is the first of a few ones centered around logging in Docker. We will take a rather in-depth look to the first two drivers *json-file* and *syslog*. We will see how they work and what their strengths and limitations are, etc.
 
+**NOTE**: This article's source code alone with the code used all throughout the tutorial can be found on [Github](https://github.com/yoanisgil/docker-logging-tutorial)
+
 Docker Logging 101
 ----------------------
 
-Before getting into the specifics of any of the available logging drivers, there are these questions, which you might have already asked yourself:
+Before getting into the specifics of any of the available logging drivers, there are these questions you might have already asked yourself:
 
 - What messages are actually logged? 
 - How do I get my messages shipped to the logging driver?
 
-If you asked yourself these questions and you at least gave it a try to the [daemonized hello world example](https://docs.docker.com/userguide/dockerizing/), well it turns out you already know the answers. The answer to first question it's actually dead easy: anything that gets written out to the container's standard output/error will get logged. As to the answer to the second one, you don't need to do much, at least not by default. When a new container is created, and provided that no logging specific options has been passed at the moment of creating it,  the docker engine will configure the default logging driver which is the json-file one. So if we put together 1 and 2 it's clear that anything your application write to it's standard output/error will get written in a json file. That simple.
+If you asked yourself these questions and you at least gave it a try to the [daemonized hello world example](https://docs.docker.com/userguide/dockerizing/), well it turns out you already know the answers. The answer to first question it's actually dead easy: anything that gets written out to the container's standard output/error will get logged. As to the answer to the second one, you don't need to do much, at least not by default. When a new container is created, and provided that no logging specific options has been passed at the moment of creating it,  the docker engine will configure the default logging driver which is the `json-file` one. So if we put together 1 and 2 it's clear that anything your application write to it's standard output/error will get written in a json file. That simple.
 
-Ok, that last one paragraph was too long, so enough wording and let's see it in action. Let's create a simple python script which writes to both it's stdout and stderr output:
+Ok, that last one paragraph was too long, so enough wording and let's see it in action. First we will create a simple python script which writes to both it's stdout and stderr output:
 
 ```python
  import sys  
@@ -47,23 +47,20 @@ Error
 All Good
 Error
 All Good
-Error
-All Good
-Error
 ````
 
-This clearly illustrates how output from `stdout/stderr` gets logged and it's actually available with the `docker logs` command. But wait, isn't this the `json-file` driver? So where is this so called JSON file? Let's inspect our container and see what we can find:
+This illustrates how messages written to `stdout/stderr` are logged and it's actually available with the `docker logs` command. But wait, isn't this the `json-file` driver? So where is this so called JSON file? Let's inspect our container and see what we can find:
 
     $ docker inspect logging-01 | grep LogPath
         "LogPath": "/mnt/sda1/var/lib/docker/containers/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1-json.log",
         
-your will get a different ouput from the command above but the important thing here is that we get a path to the JSON file where our log messages are stored. So let's take a look at this file:
+your will get a different ouput from the command above but the important thing here is that we get a path to the file where our log messages are written to. Let's take a look at this file:
 
     tail -2 /mnt/sda1/var/lib/docker/containers/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1-json.log
     {"log":"Error\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120234597Z"}
     {"log":"All Good\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120475567Z"}
     
-which is self-explanatory I think ;). The `json-file` takes two more options:
+which is self-explanatory me thinsk ;). The `json-file` driver takes two more options:
 
 - --log-opt max-size=[0-9+][k|m|g]
 - --log-opt max-file=[0-9+]
@@ -77,29 +74,29 @@ about which you can know more [here](https://docs.docker.com/reference/logging/o
     All Good
     ....
 
-here we have indicated that we only want to keep 2 log files and the max allowed size for any given log file is 2k. You can verify that this is indeed happing by grabbing the location these files:
+here we have indicated that we only want to keep 2 log files and the max allowed size for any given log file is 2k. You can verify that this is indeed happening by grabbing the location of the default log file:
 
     $ docker inspect logging-02 | grep LogPath
            "LogPath":"/mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd-json.log",
     $ cd /mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/
     $ watch 'ls -lh *json*'
 
-
-
 Syslog driver
 ------------
 
-The `json-file` driver is as simple as it gets, and while it's very useful for development purposes once you are into the container madness it won't do the job. This is not strictly related to performance issues but rather to the fact that as the number of containers and applications starts to increase it becomes a no men works to track logging information. Enter the `syslog` driver. 
+The `json-file` driver is as simple as it gets and while it's very useful for development purposes but it won't do the job  once the list of running containers starts to growth. This is not strictly related to performance issues but rather to the fact that as the number of containers and applications starts to increase it becomes a no men work to track logging information. Enter the `syslog` driver. 
 
-This is one of the many drivers which allows you to send logging messages to local or remote server by means of a network protocol. So lets get ourselves a syslog server .... running in a container of course ;):
+This is one of the many logging drivers which allows you to send  messages to local or remote server by means of a network protocol. So lets get ourselves a syslog server .... running in a container of course ;):
 
     $ docker run -d -v /tmp:/var/log/syslog -p 127.0.0.1:5514:514/udp  --name rsyslog voxxit/rsyslog
+    
+(**NOTE**: We're using [rsyslog](http://www.rsyslog.com/) which is an implementation of the syslog protocol)
 
-and now lets launch our simple application but this time we will specify the logging driver to be used:
+and now lets launch our sample application but this time we will specify the logging driver to be used:
 
     $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app01   --name logging-02 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
 
-So let's break down into pieces this last command line:
+Let's break down into pieces this last command line:
 
 - `syslog-tag=app01`: A tag to apply to all messages coming from this container.
 - `syslog-facility=daemon`: The syslog facility to be used
@@ -108,12 +105,12 @@ So let's break down into pieces this last command line:
 
 (*NOTE*: If you need a crash course on syslog you can check the [Wikipedia entry](https://en.wikipedia.org/wiki/Syslog) or check [this link](https://blog.logentries.com/2014/08/what-is-syslog/))
 
-So let's check those logs now been shipped to our syslog container, if you're like me, you will go and type:
+It's time to check if log messages are making it to their final destination. If you're like me, you will go and type:
 
     $ docker logs -f logging-02
     "logs" command is supported only for "json-file" logging driver (got: syslog)
 
-which will totally make sense once you give a 5 seconds thought. There is not possible way the `docker logs` could work as we expected given that we're shipping our messages to a potentially remote server. Instead we will check logged messages from our `rsyslog` container:
+which will totally make sense once you give a 5 seconds thought. There is no possible way, nor it should try to,  the `docker logs` could work as we expected given that messages are sent to a potentially remote server. Instead we need to look into the `rsyslog` container which is acting as our syslog server:
 
     $ docker exec  rsyslog tail -f /var/log/messages
     2015-09-16T01:05:17Z default docker/app01[989]: Error#015
@@ -135,6 +132,3 @@ What's next?
 The `syslog` driver is an enhancement over the `json-file` one, specially for environments with multiple applications powered by containers, at the cost of introducing a dependency on a external service. It is also a step forward towards centralization of your logging messages. However as your application growths, and so it does the number of running containers, your will find your self in need of a tool letting you search for specific log messages based on a date/time range, a keyword, etc ((don't grep-me on this one please ;)).
 
 In the next article of these series we will take a look at the `gelf` and `fluentd` driver to see how they might help to overcome some of the issues mentioned above.
-
-
-
