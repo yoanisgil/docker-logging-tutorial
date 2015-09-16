@@ -63,9 +63,78 @@ your will get a different ouput from the command above but the important thing h
     {"log":"Error\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120234597Z"}
     {"log":"All Good\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120475567Z"}
     
-which is self-explanatory I think ;). 
+which is self-explanatory I think ;). The `json-file` takes two more options:
+
+- --log-opt max-size=[0-9+][k|m|g]
+- --log-opt max-file=[0-9+]
+
+about which you can know more [here](https://docs.docker.com/reference/logging/overview/). These options lets you control the rate at which you allow your log files to grow. To illustrate this lets re-run our little application:
+
+    $ docker run --rm --log-opt max-file=2  --log-opt max-size=2k  --name logging-02 -ti  -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    Error
+    All Good
+    Error
+    All Good
+    ....
+
+here we have indicated that we only want to keep 2 log files and the max allowed size for any given log file is 2k. You can verify that this is indeed happing by grabbing the location these files:
+
+    $ docker inspect logging-02 | grep LogPath
+           "LogPath":"/mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd-json.log",
+    $ cd /mnt/sda1/var/lib/docker/containers/04a96c05121777eebe6a38d63fd657f6fb6c8b9632fee7d81ccc0ff45023aedd/
+    $ watch 'ls -lh *json*'
 
 
+
+Syslog driver
+------------
+
+The `json-file` driver is as simple as it gets, and while it's very useful for development purposes once you are into the container madness it won't do the job. This is not strictly related to performance issues but rather to the fact that as the number of containers and applications starts to increase it becomes a no men works to track logging information. Enter the `syslog` driver. 
+
+This is one of the many drivers which allows you to send logging messages to local or remote server by means of a network protocol. So lets get ourselves a syslog server .... running in a container of course ;):
+
+    $ docker run -d -v /tmp:/var/log/syslog -p 127.0.0.1:5514:514/udp  --name rsyslog voxxit/rsyslog
+
+and now lets launch our simple application but this time we will specify the logging driver to be used:
+
+    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app01   --name logging-02 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+
+So let's break down into pieces this last command line:
+
+- `syslog-tag=app01`: A tag to apply to all messages coming from this container.
+- `syslog-facility=daemon`: The syslog facility to be used
+- `--log-driver=syslog`: We're explicitly configuring our container to use the `syslog` driver.
+- `--log-opt syslog-address=udp://127.0.0.1:5514`: This indicates which syslog server we want to ship messages to and whether it should be done using TCP or UDP.
+
+(*NOTE*: If you need a crash course on syslog you can check the [Wikipedia entry](https://en.wikipedia.org/wiki/Syslog) or check [this link](https://blog.logentries.com/2014/08/what-is-syslog/))
+
+So let's check those logs now been shipped to our syslog container, if you're like me, you will go and type:
+
+    $ docker logs -f logging-02
+    "logs" command is supported only for "json-file" logging driver (got: syslog)
+
+which will totally make sense once you give a 5 seconds thought. There is not possible way the `docker logs` could work as we expected given that we're shipping our messages to a potentially remote server. Instead we will check logged messages from our `rsyslog` container:
+
+    $ docker exec  rsyslog tail -f /var/log/messages
+    2015-09-16T01:05:17Z default docker/app01[989]: Error#015
+    2015-09-16T01:05:17Z default docker/app01[989]: All Good#015
+
+see how our `app01` is present in each message? Now let's launch a new instance of our application but with a new tag:
+
+    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app02   --name logging-03 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker exec  rsyslog tail -f /var/log/messages
+    2015-09-16T01:11:27Z default docker/app02[989]: Error#015
+    2015-09-16T01:11:27Z default docker/app02[989]: All Good#015
+    2015-09-16T01:11:28Z default docker/app01[989]: Error#015
+    2015-09-16T01:11:28Z default docker/app01[989]: All Good#015
+and now we have messages coming from the new container tagged with `app02`.
+
+What's next?
+-------------
+
+The `syslog` driver is an enhancement over the `json-file` one, specially for environments with multiple applications powered by containers, at the cost of introducing a dependency on a external service. It is also a step forward towards centralization of your logging messages. However as your application growths, and so it does the number of running containers, your will find your self in need of a tool letting you search for specific log messages based on a date/time range, a keyword, etc ((don't grep-me on this one please ;)).
+
+In the next article of these series we will take a look at the `gelf` and `fluentd` driver to see how they might help to overcome some of the issues mentioned above.
 
 
 
