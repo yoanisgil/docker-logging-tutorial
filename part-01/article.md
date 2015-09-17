@@ -4,7 +4,7 @@ Logging is a central piece to almost every application. It is one of those thing
 
 - `json-file`: This is the default driver. Everything gets logged to a JSON-structured file
 - `syslog`: Ship logging information to a syslog server
-- `journald`: Write log messages to journald (journald is a logging service which comes with [systemd](http://www.freedesktop.org/wiki/Software/systemd/))
+- `journald`: Write log messages to journald (journald is a logging service which comes with  [systemd](http://www.freedesktop.org/wiki/Software/systemd/))
 - `gelf`: Writes log messages to a [GELF](https://www.graylog.org/resources/gelf/)  endpoint like Graylog or Logstash
 - `fluentd`: Write log messages to [fluentd](http://www.fluentd.org/)
 
@@ -97,20 +97,20 @@ Let's break down into pieces this last command line:
 - `--log-driver=syslog`: We're explicitly configuring our container to use the `syslog` driver.
 - `--log-opt syslog-address=udp://127.0.0.1:5514`: This indicates which syslog server we want to ship messages to and whether it should be done using TCP or UDP.
 
-(*NOTE*: If you need a crash course on syslog you can check the [Wikipedia entry](https://en.wikipedia.org/wiki/Syslog) or check [this link](https://blog.logentries.com/2014/08/what-is-syslog/))
+(*NOTE*: If you need a crash course on syslog you can check the [Wikipedia entry](https://en.wikipedia.org/wiki/Syslog) or [this link](https://blog.logentries.com/2014/08/what-is-syslog/))
 
 It's time to check if log messages are making it to their final destination. If you're like me, you will go and type:
 
     $ docker logs -f logging-02
     "logs" command is supported only for "json-file" logging driver (got: syslog)
 
-which will totally make sense once you give a 5 seconds thought. There is no possible way, nor it should try to,  the `docker logs` could work as we expected given that messages are sent to a potentially remote server. Instead we need to look into the `rsyslog` container which is acting as our syslog server:
+which will totally make sense once you give it a 5 seconds thought. There is no possible way, nor it should try to,  the `docker logs` could work as we expected given that messages are sent to a potentially remote server. Instead we need to look into the `rsyslog` container which is acting as our syslog server:
 
     $ docker exec  rsyslog tail -f /var/log/messages
     2015-09-16T01:05:17Z default docker/app01[989]: Error#015
     2015-09-16T01:05:17Z default docker/app01[989]: All Good#015
 
-see how our `app01` is present in each message? Now let's launch a new instance of our application but with a new tag:
+see how our `app01` tag is present on each message? Now let’s launch a new instance of our sample application but this time we will use a new tag:
 
     $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app02   --name logging-03 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
     $ docker exec  rsyslog tail -f /var/log/messages
@@ -118,10 +118,10 @@ see how our `app01` is present in each message? Now let's launch a new instance 
     2015-09-16T01:11:27Z default docker/app02[989]: All Good#015
     2015-09-16T01:11:28Z default docker/app01[989]: Error#015
     2015-09-16T01:11:28Z default docker/app01[989]: All Good#015
-and now we have messages coming from the new container tagged with `app02`.
+and now we have messages coming from the new container tagged `app02`.
 
 ##What's next?
 
-The `syslog` driver is an enhancement over the `json-file` one, specially for environments with multiple applications powered by containers, at the cost of introducing a dependency on a external service. It is also a step forward towards centralization of your logging messages. However as your application growths, and so it does the number of running containers, your will find your self in need of a tool letting you search for specific log messages based on a date/time range, a keyword, etc ((don't grep-me on this one please ;)).
+The `syslog` driver is an enhancement over the `json-file` one, specially for environments with multiple applications powered by containers, at the cost of introducing a dependency on a external service. It is also a step forward towards centralization of logging messages. However as the number of applications grow, and so it does the number of running containers, your will find your self in need of a tool letting you search for specific log messages based on a date/time range, a keyword, etc ((don't grep-me on this one please ;)).
 
 In the next article of these series we will take a look at the `gelf` and `fluentd` driver to see how they might help to overcome some of the issues mentioned above.
