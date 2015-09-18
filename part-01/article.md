@@ -36,7 +36,7 @@ Ok, that last one paragraph was too long, so enough wording and let's see it in 
 ``` 
 Save this to a file `logging-01.py` (or you can get it from [here](logging-01.py)) and then run:
 
-    $ docker run --name logging-01 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker run --name logging-01 -d -v $(pwd):/tmp  -w /tmp python:2.7 python -u logging-01.py
     $ docker logs -f logging-01
     
 which will output:
@@ -55,7 +55,7 @@ This illustrates how messages written to `stdout/stderr` are logged and it's act
 you will get a different output from the command above but the important thing here is that we have the path to the file where our log messages are written to. Let's take a look at this file:
 
     tail -2 /mnt/sda1/var/lib/docker/containers/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1/ae1629aceb0b82da6451a981d073243bf7374c07634a377c64a9a7fcea2b40e1-json.log
-    {"log":"Error\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120234597Z"}
+    {"log":"Error\r\n","stream":"stderr","time":"2015-09-13T03:36:30.120234597Z"}
     {"log":"All Good\r\n","stream":"stdout","time":"2015-09-13T03:36:30.120475567Z"}
     
 which is self-explanatory me thinks ;). The `json-file` driver takes two more options:
@@ -65,7 +65,7 @@ which is self-explanatory me thinks ;). The `json-file` driver takes two more op
 
 about which you can read more [here](https://docs.docker.com/reference/logging/overview/). These options lets you control the rate at which log files are allowed to grow. To illustrate this lets re-run our little application:
 
-    $ docker run --rm --log-opt max-file=2  --log-opt max-size=2k  --name logging-02 -ti  -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker run --rm --log-opt max-file=2  --log-opt max-size=2k  --name logging-02 -ti  -v $(pwd):/tmp  -w /tmp python:2.7 python -u logging-01.py
     Error
     All Good
     Error
@@ -90,7 +90,7 @@ This is one of the many logging drivers which allows you to send  messages to lo
 
 and now lets launch our sample application but this time we will specify the logging driver to be used:
 
-    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app01   --name logging-02 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app01   --name logging-02 -d -v $(pwd):/tmp  -w /tmp python:2.7 python -u logging-01.py
 
 Let's break down into pieces this last command line:
 
@@ -109,17 +109,17 @@ It's time to check if log messages are making it to their final destination. If 
 which will totally make sense once you give it a 5 seconds thought. There is no possible way, nor it should try to,  the `docker logs` could work as we expected given that messages are sent to a potentially remote server. Instead we need to look into the `rsyslog` container which is acting as our syslog server:
 
     $ docker exec  rsyslog tail -f /var/log/messages
-    2015-09-16T01:05:17Z default docker/app01[989]: Error#015
-    2015-09-16T01:05:17Z default docker/app01[989]: All Good#015
+    2015-09-16T01:05:17Z default docker/app01[989]: Error
+    2015-09-16T01:05:17Z default docker/app01[989]: All Good
 
 see how our `app01` tag is present on each message? Now let’s launch a new instance of our sample application but this time we will use a new tag:
 
-    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app02   --name logging-03 -ti -d -v $(pwd):/tmp  -w /tmp python:2.7 python logging-01.py
+    $ docker run --log-driver=syslog --log-opt syslog-address=udp://127.0.0.1:5514 --log-opt syslog-facility=daemon --log-opt syslog-tag=app02   --name logging-03 -d -v $(pwd):/tmp  -w /tmp python:2.7 python -u logging-01.py
     $ docker exec  rsyslog tail -f /var/log/messages
-    2015-09-16T01:11:27Z default docker/app02[989]: Error#015
-    2015-09-16T01:11:27Z default docker/app02[989]: All Good#015
-    2015-09-16T01:11:28Z default docker/app01[989]: Error#015
-    2015-09-16T01:11:28Z default docker/app01[989]: All Good#015
+    2015-09-16T01:11:27Z default docker/app02[989]: Error
+    2015-09-16T01:11:27Z default docker/app02[989]: All Good
+    2015-09-16T01:11:28Z default docker/app01[989]: Error
+    2015-09-16T01:11:28Z default docker/app01[989]: All Good
 and now we have messages coming from the new container tagged `app02`.
 
 ##What's next?
