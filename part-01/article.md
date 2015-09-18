@@ -8,7 +8,9 @@ Logging is a central piece to almost every application. It is one of those thing
 - `gelf`: Writes log messages to a [GELF](https://www.graylog.org/resources/gelf/)  endpoint like Graylog or Logstash
 - `fluentd`: Write log messages to [fluentd](http://www.fluentd.org/)
 
-This article is the first of a few ones centered around logging in Docker. We will take a rather in-depth look to the first two drivers *json-file* and *syslog*. We will see how they work and what their strengths and limitations are, etc.
+This article is the first of a few ones centered around logging in Docker. We will take a rather in-depth look to the first two drivers *json-file* and *syslog*. We will see how they work and what their strengths and limitations are. 
+
+The examples given throughout the article were created and tested using Docker v1.8 which introduces the `gelf` and `fluentd` drivers alone with a few nice additions to the `syslog` one (tagging, logging facility, etc). You can read more about it [here](https://github.com/docker/docker/blob/v1.8.1/CHANGELOG.md#180-2015-08-11).
 
 **NOTE**: This article's source code alone with the code used can be found on [Github](https://github.com/yoanisgil/docker-logging-tutorial)
 
